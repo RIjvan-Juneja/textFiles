@@ -1,0 +1,8 @@
+users ( id, first_name, last_name, role_id, mobile_number, email,salt, password_hash, gender, created_at, updated_at )
+roles ( id, role_name, created_at, updated_at)
+permissions  ( id, name)
+role_permission_mapping ( id, role_id, permission_id )
+tasks ( id, user_id, title,description, category, created_at, updated_at)
+attachments ( id, task_id,file_type, file_name, path, created_at)
+tasks_time_logs ( id, task_id, user_id, start_datetime, pause_timedate , created_at, updated_at)
+reports_generate_logs ( id, user_id, start_date, end_date, created_at)
