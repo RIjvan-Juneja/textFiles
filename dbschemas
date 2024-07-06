@@ -1,1 +1,141 @@
+DB DIAGRAM :
+
+table users {
+  id int [pk]
+  first_name varchar
+  last_name varchar
+  role_id int [ref: > roles.id] // many-to-one
+  mobile_number varchar
+  email varchar
+  salt varchar
+  password_hash varchar
+  gender varchar
+  created_at datetime
+  updated_at datetime
+}
+
+table roles {
+  id int [pk] 
+  role_name varchar
+  created_at datetime
+  updated_at datetime
+}
+
+table permissions {
+  id int [pk]
+  name varchar
+}
+
+table role_permission_mapping {
+  id int [pk]
+  role_id int [ref: > roles.id] // many-to-one
+  permission_id int  [ref: > permissions.id] // many-to-one
+}
+
+table tasks {
+  id int [pk]
+  user_id int [ref: > users.id] // many-to-one
+  title varchar
+  description text
+  category_id int [ref: > category.id]
+  created_at datetime
+  updated_at datetime
+}
+
+table category {
+  id int [pk]
+  name varchar
+  created_at datetime
+  updated_at datetime
+}
+
+table attachments {
+  id int [pk]
+  task_id int [ref: > tasks.id] // many-to-one
+  file_type varchar
+  file_name varchar
+  path varchar
+  created_at datetime
+}
+
+table tasks_time_logs {
+  id int [pk]
+  task_id int  [ref: > tasks.id] // many-to-one
+  user_id int 
+  start_datetime datetime
+  end_datetime datetime
+  duration int
+  created_at datetime
+  updated_at datetime
+}
+
+model demo : 
+
+'use strict';
+const { Model } = require('sequelize');
+
+module.exports = (sequelize, DataTypes) => {
+  class Users extends Model {
+    static associate(models) {
+      Users.belongsTo(models.Role, { foreignKey: 'role_id' });
+      Users.hasMany(models.Task, { foreignKey: 'user_id' });
+    }
+  }
+
+  User.init({
+    first_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    last_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    role_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING,
+      unique: true,
+      validate: {
+        isEmail: true,
+      },
+    },
+    password: DataTypes.STRING,
+    gender: DataTypes.STRING,
+    mobile_number: DataTypes.STRING,
+  }, {
+    sequelize,
+    modelName: 'Users',
+    tableName: 'users',
+    paranoid: true, 
+    deleted_at: 'destroyTime',
+  });
+
+  return User;
+};
+
+migration demo : 
+
+'use strict';
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    await queryInterface.createTable('Users', {
+      id: {
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
+        type: Sequelize.INTEGER
+      },
+      ...
+    });
+  },
+  async down(queryInterface, Sequelize) {
+    await queryInterface.dropTable('Users');
+  }
+};
+
+
   
