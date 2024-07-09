@@ -1,0 +1,85 @@
+const express = require('express');
+const sequelize = require('./config/database');
+const User = require('./models/User');
+const Role = require('./models/Role');
+const Permission = require('./models/Permission');
+const RolePermission = require('./models/RolePermission');
+
+const app = express();
+const port = 3000;
+
+// Synchronize models with the database
+sequelize.sync({ force: true }).then(async () => {
+  console.log('Database & tables created!');
+
+  // Seed roles and permissions
+  const [adminRole, editorRole, viewerRole] = await Promise.all([
+    Role.create({ name: 'admin' }),
+    Role.create({ name: 'editor' }),
+    Role.create({ name: 'viewer' })
+  ]);
+
+  const permissions = await Promise.all([
+    Permission.create({ name: 'create_user' }),
+    Permission.create({ name: 'delete_user' }),
+    Permission.create({ name: 'view_user' }),
+    Permission.create({ name: 'edit_user' }),
+    Permission.create({ name: 'create_post' }),
+    Permission.create({ name: 'edit_post' }),
+    Permission.create({ name: 'delete_post' }),
+    Permission.create({ name: 'view_post' })
+  ]);
+
+  await Promise.all([
+    adminRole.addPermissions(permissions),
+    editorRole.addPermissions(permissions.slice(4)),
+    viewerRole.addPermissions([permissions[2], permissions[7]]),
+    User.create({ username: 'alice', RoleId: adminRole.id }),
+    User.create({ username: 'bob', RoleId: editorRole.id }),
+    User.create({ username: 'charlie', RoleId: viewerRole.id })
+  ]);
+});
+
+function authenticate(req, res, next) {
+  const username = req.query.username;
+  if (!username) {
+    return res.status(401).send('Username required');
+  }
+  req.username = username;
+  next();
+}
+
+function permissionMiddleware(requiredPermissions) {
+  return async (req, res, next) => {
+    try {
+      const user = await User.findOne({ where: { username: req.username }, include: Role });
+      if (!user) {
+        return res.status(403).send('Access denied');
+      }
+
+      const role = await Role.findByPk(user.RoleId, { include: Permission });
+      const userPermissions = role.Permissions.map(p => p.name);
+
+      const hasPermission = requiredPermissions.every(permission => userPermissions.includes(permission));
+      if (hasPermission) {
+        next();
+      } else {
+        res.status(403).send('Access denied');
+      }
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+app.get('/userDashboard', authenticate, permissionMiddleware(['view_user', 'edit_user']), (req, res) => {
+  res.send(`Welcome to the user dashboard, ${req.username}`);
+});
+
+app.get('/adminDashboard', authenticate, permissionMiddleware(['create_user', 'delete_user']), (req, res) => {
+  res.send(`Welcome to the admin dashboard, ${req.username}`);
+});
+
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
